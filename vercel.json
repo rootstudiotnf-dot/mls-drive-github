@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/internal/cron/notifications?digest=1", "schedule": "0 8 * * *" },
+    { "path": "/api/internal/cron/ops", "schedule": "30 8 * * *" }
+  ]
+}

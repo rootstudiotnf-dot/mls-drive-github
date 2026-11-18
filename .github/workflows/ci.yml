@@ -1,0 +1,41 @@
+name: CI
+
+# En cada push y en cada pull request: tipos, lint, pruebas y build. El despliegue a producción lo hace Vercel
+# SOLO desde la rama principal (Project Settings → Git → Production Branch = main) y, con la protección de rama
+# activada (docs/DESPLIEGUE.md), solo si este flujo está en verde.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - name: Build (con valores ficticios: el build no se conecta a ningún servicio)
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+          NEXT_PUBLIC_SITE_URL: https://ci.invalid
+      - name: Dependencias de producción sin vulnerabilidades altas ni críticas
+        run: npm audit --omit=dev --audit-level=high
+      - name: El JavaScript del cliente no contiene secretos ni claves de objeto
+        run: |
+          ! grep -rEl "SUPABASE_SERVICE_ROLE|SHARE_LINK_SALT|RESEND_API_KEY|CRON_SECRET|R2_SECRET_ACCESS_KEY|VAULT_COOKIE_SECRET|storage_key" .next/static
